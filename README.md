@@ -282,3 +282,240 @@ o_far: Kiểu trả về này là nghịch đảo của x86 và x86_64 Không ph
 ----------------------------------------------------
 o_near: Kiểu trả về này không phổ biến trong kỹ thuật đảo ngược x86 và x86_64. Nó được sử dụng để xác định toán hạng truy cập trực tiếp vào địa chỉ cục bộ, giá trị là 7
 ```
+
+### 6. Giả lập IDA
+
+Để lấy câu lệnh dạng đối tượng (inst_t) tại một địa chỉ ta có thể sử dụng lệnh sau
+
+```
+inst = idautils.DecodeInstruction(idc.here())
+
+# Trong đó đối tượng inst sẽ có các thuộc tính như sau
+inst.itype : đây là số nguyên biểu diễn loại lệnh. Các opcode khác nhau có cùng itype và do đó opcode != itype .
+inst.size : đây là kích thước của lệnh được giải mã.
+inst.Operands[] : đây là mảng bắt đầu từ số 0 chứa thông tin toán hạng.
+inst.Op1 .. OpN : đây là các bí danh dựa trên 1 trong mảng Toán hạng .
+inst.ea : địa chỉ tuyến tính của lệnh được giải mã.
+```
+
+Bạn có thể tự hỏi mối quan hệ giữa opcode và itype của nó là gì ? Câu trả lời rất đơn giản. Trong IDA, mô-đun bộ xử lý của cơ sở dữ liệu mở chịu trách nhiệm điền vào trường itype dựa trên opcode. Trong IDA SDK, bạn có thể tìm thấy tệp tiêu đề có tên là **allins.hpp** . Tệp tiêu đề này chứa các enum cho tất cả các mô-đun bộ xử lý được hỗ trợ cùng với các thành viên enum cho mỗi lệnh được hỗ trợ:
+
+```
+// Trích đoạn từ allins.hpp
+// Kiểu x86/x64
+liệt kê
+{
+NN_null = 0,             // Hoạt động không xác định
+NN_aaa,                  // Điều chỉnh ASCII sau khi cộng
+NN_aad,                  // ASCII Điều chỉnh AX trước khi chia
+NN_aam,                  // ASCII Điều chỉnh AX sau khi Nhân
+NN_aas,                  // ASCII Điều chỉnh AL sau khi trừ
+.
+.
+.
+NN_jz,                   // Nhảy nếu bằng 0 (ZF=1)
+NN_jmp,                  // Nhảy
+NN_jmpfi,                // Nhảy xa gián tiếp
+NN_jmpni,                // Nhảy gần gián tiếp
+NN_jmpshort,             // Nhảy ngắn (không sử dụng)
+NN_lahf,                 // Tải cờ vào thanh ghi AH
+.
+.
+.
+// Hướng dẫn giả Pentium III
+NN_cmpeqps,              // EQ so sánh FP đơn được đóng gói
+NN_cmpltps,              // Đóng gói Single-FP So sánh LT
+NN_cmpleps,              // Đóng gói Single-FP So sánh LE
+NN_cmpunordps,           // Đóng gói Single-FP So sánh UNORD
+.
+.
+.
+}
+```
+
+```
+# Example
+# .text:00402085 74 09 jz short loc_402090
+inst = idautils.DecodeInstruction(0x402085)
+print("YES" if inst.itype == idaapi.NN_jz else "NO")
+```
+Người ta có thể kiểm tra trực quan lệnh được giải mã bằng cách so sánh với một trong  các hằng số idaapi.NN_xxxx .
+
+Đối với toán hạng, người ta có thể truy cập chúng thông qua inst.Operands[] hoặc inst.OpN . Để có được số toán hạng được lệnh giải mã sử dụng, bạn không nên dựa vào độ dài của mảng Operands vì nó sẽ luôn giải quyết thành  UA_MAXOP == 8 (xem ida.hpp ). Thay vào đó, hãy lặp lại từng toán hạng và xem loại của nó có phải là o_void hay không .
+
+Toán hạng lệnh được định nghĩa bằng cách sử dụng kiểu cấu trúc op_t được xác định trong tệp tiêu đề ua.hpp .
+
+```
+op.flags : cờ toán hạng.
+op.dtype : kiểu toán hạng. Một trong các hằng số dt_xxx . Người ta có thể sử dụng trường này để cho biết kích thước của toán hạng (1 == dt_byte , 2 == dt_word , v.v.).
+op.type : kiểu toán hạng. Một trong các hằng số o_xxx .
+specflag1 .. specflag4 : cờ cụ thể của bộ xử lý.    
+op.reg : thanh ghi( o_reg ).
+op.phrase : thanh ghi chỉ mục có chức năng truy cập bộ nhớ các toán hạng ( o_phrase ).
+op.value : giá trị tức thời (o_imm) hoặc độ dịch chuyển bên ngoài ( o_displ ).
+op.addr : địa chỉ bộ nhớ được toán hạng sử dụng ( o_mem , o_far , o_displ , o_near ).
+
+# Các kiểu toán hạng
+o_void : không có toán hạng nào hiện diện.
+o_reg : toán hạng là một thanh ghi (al, ax,es,ds…).
+o_mem : tham chiếu bộ nhớ trực tiếp (DATA).
+o_phrase : Tham chiếu bộ nhớ [Reg cơ sở + Reg chỉ mục].
+o_displ : bộ nhớ Reg [Reg cơ sở + Reg chỉ mục + Độ dịch chuyển].
+o_imm : giá trị tức thời.
+o_far : Địa chỉ xa tức thời (CODE).
+o_near : Địa chỉ gần nhất (CODE).
+o_idpspec0 ..  o_idpspec5 : cờ cụ thể của bộ xử lý.
+```
+
+Khi kiểu toán hạng là o_reg hoặc o_phrase , thì các giá trị op.reg / op.phrase chứa giá trị enum của thanh ghi. Giống như thuật ngữ NN_xxx , IDA SDK cũng cung cấp tên hằng số thanh ghi và giá trị của chúng; tuy nhiên điều này chỉ đúng với mô-đun bộ xử lý x86/x64. Sau đây là một đoạn trích từ tệp tiêu đề intel.hpp :
+
+Ví dụ phân tách hoàn tianf một lệnh
+
+```
+# .text:0040106F 35 90 8D 28 DA xor     eax, 0DA288D90h
+out = ''
+inst = idautils.DecodeInstruction(0x40106F)
+out += "XOR "     if inst.itype == idaapi.NN_xor else ""
+out += "EAX"      if (inst.Op1.type == idaapi.o_reg and inst.Op1.reg == 0) else ""
+out += ", 0x%08X" % inst.Op2.value if (inst.Op2.type == idaapi.o_imm) else ""
+print(out)
+```
+
+Ví dụ để tìm một pattern code như sau
+
+```
+\def scope_challenge_function(func_ea):
+    f = idaapi.get_func(func_ea)
+    if f is None:
+        return (False, "No function at address!")
+        
+    emu_start, emu_end = f.startEA, f.endEA
+    
+    ea = emu_start
+    #    
+    # Find the start of the emulation pattern
+    #
+    stage = 0
+    while ea <= emu_end:
+        inst = idautils.DecodeInstruction(ea)
+        if inst is None:
+            return (False, "Could not decode")
+            
+        # Advance to next instruction
+        ea += inst.size
+        
+        # mov (eax|edx), [ebp+?]
+        if (inst.itype == idaapi.NN_mov) and (inst.Operands[0].type == idaapi.o_reg) and \
+           (inst.Operands[1].type == idaapi.o_displ) and (inst.Operands[1].phrase == REG_EBP):
+            # mov eax, [ebp+8]
+            if (stage == 0) and (inst.Operands[0].reg == REG_EAX) and (inst.Operands[1].addr == 8):
+                stage = 1
+            # mov edx, [ebp+0xC]
+            elif (stage == 1) and (inst.Operands[0].reg == REG_EDX) and (inst.Operands[1].addr == 0xC):
+                stage = 2
+                emu_start = ea
+        elif (stage == 2) and (inst.itype == idaapi.NN_popa):
+            # Let's decode backwards twice and double check the pattern
+            ea2 = idc.PrevHead(ea)
+            
+            # Disassemble backwards
+            for _ in range(0, 2):
+                ea2 = idc.PrevHead(ea2)
+                inst = idautils.DecodeInstruction(ea2)
+                if (inst.itype == idaapi.NN_mov) and (inst.Op1.type == idaapi.o_displ) and \
+                   (inst.Op1.reg == 5):
+                    if inst.Op2.reg == 2 and stage == 2:
+                        stage = 3
+                    elif inst.Op2.reg == 0 and stage == 3:
+                        stage = 4
+                        emu_end = ea2
+                        break
+                   
+            break
+            
+       
+    if stage != 4:
+        return (False, "Could not find markers")
+            
+    return (True, (emu_start, emu_end))
+```
+
+Một ví dụ khác 
+
+```
+def emulate_challenge_function(info, c1, c2, dbg = False):
+    emu_start, emu_end = info
+    if dbg:
+        print("Emulating from %x to %x (%d, %d)" % (emu_start, emu_end, c1, c2))
+    # Reset registers    
+    regs = { 
+      REG_EAX: c1,
+      REG_EDX: c2
+    }
+    
+    def get_opr_val(inst, regs):
+        if inst.Op2.type == o_imm:
+            return (True, inst.Op2.value)
+        elif inst.Op2.type == idaapi.o_reg:
+            return (True, regs[inst.Op2.reg])
+        else:
+            return (False, 0)
+            
+    ea = emu_start
+    while ea < emu_end:
+        out = ">%x: " % ea
+        ok = True
+        inst = idautils.DecodeInstruction(ea)
+        ea += inst.size
+        if inst.itype == idaapi.NN_not:
+            out += "NOT"
+            regs[inst.Op1.reg] = ~regs.get(inst.Op1.reg, 0) & 0xffffffff
+        elif inst.itype == idaapi.NN_dec and inst.Op1.type == idaapi.o_reg:
+            out += "DEC"        
+            regs[inst.Op1.reg] = (regs.get(inst.Op1.reg, 0) - 1) & 0xffffffff
+        elif inst.itype == idaapi.NN_inc and inst.Op1.type == idaapi.o_reg:
+            out += "INC"        
+            regs[inst.Op1.reg] = (regs.get(inst.Op1.reg, 0) + 1) & 0xffffffff
+        elif inst.itype == idaapi.NN_xor:
+            ok, val = get_opr_val(inst, regs)
+            regs[inst.Op1.reg] = (regs.get(inst.Op1.reg, 0) ^ val) & 0xffffffff
+            out += "XOR %08X" % val
+        elif inst.itype == idaapi.NN_sub:
+            ok, val = get_opr_val(inst, regs)
+            regs[inst.Op1.reg] = (regs.get(inst.Op1.reg, 0) - val) & 0xffffffff
+            out += "SUB %08X" % val
+        elif inst.itype == idaapi.NN_add:
+            ok, val = get_opr_val(inst, regs)
+            regs[inst.Op1.reg] = (regs.get(inst.Op1.reg, 0) + val) & 0xffffffff
+            out += "ADD %08X" % val
+        else:
+            ok = False
+        # Dump registers
+        for k, v in regs.items():
+            out += (" [%s: %08X] " % (REG_NAMES.get(k, "%x" % k), v))
+        if not ok:
+            return (False, "Emulation failed at %08X" % ea)
+        if dbg:            
+            print(out)
+    
+    return (True, (regs[REG_EDX] << 32) | regs[REG_EAX])
+```
+
+Khi hàm bắt đầu, nó sẽ điền các giá trị ban đầu của các thanh ghi vào từ điển regs . Chúng ta sử dụng op.reg làm khóa vào từ điển đó. Bất kỳ thanh ghi nào chưa được khởi tạo sẽ chứa giá trị bằng không. Sau đó, hàm mô phỏng sẽ nhập một vòng lặp và giải mã từng lệnh. Đối với mỗi lệnh, nó sẽ kiểm tra loại lệnh (để biết thao tác nào cần mô phỏng) và các toán hạng của lệnh (để biết cách lấy các giá trị cần thiết). Khi kết thúc vòng lặp, một giá trị 64 bit sẽ được trả về.
+
+Chúng ta có thể xác minh xem trình giả lập có chính xác hay không bằng cách so sánh kết quả trả về từ trình giả lập với kết quả chúng ta đã thu thập trước đó:
+
+```
+for i in range(0, challenge_funcs_tbl_size):
+    func = idc.Dword(challenge_funcs_tbl +  i * 4)
+    
+    ok, info = scope_challenge_function(func)
+    if ok:
+        ok, val = emulate_challenge_function(info, 123, 456, dbg)
+        if (val != RESULTS[i]):
+            print("Mistmatch #%d: %16X vs %16X" % (i, val, RESULTS[i]))
+            break
+        
+    else:
+        print("Failed to scope challenge function #%d" % i)
+```
