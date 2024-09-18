@@ -22,6 +22,8 @@ Học IDAPython với ckagngoc 💀
 
 [7-thao-tác-với-tham-chiếu](#7-thao-tác-với-tham-chiếu)
 
+[8-debug-hook-với-idapython](#8-debug-hook-với-idapython)
+
 ---
 
 ## I. Tài liệu học tập được đề xuất cho IDA python
@@ -653,7 +655,7 @@ Flag: 0x0020
 Mô tả: Mask để lọc các loại tham chiếu.
 Flag: 0x003F
 ```
-
+---
 ### 8. Debug hook với IDApython
 Tạo một file Python mới để chứa script. Dưới đây là ví dụ về một script đơn giản để thiết lập và sử dụng debug hook.
 
