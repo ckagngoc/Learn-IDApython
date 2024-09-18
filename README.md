@@ -77,7 +77,7 @@ Python>idc.print_operand(here(),0)
 Python>idc.print_operand(here(),1)
 ''
 ```
-
+---
 ### 2. Thao tác với segment
 
 Lặp qua các segments
@@ -89,7 +89,7 @@ import idautils
 for seg in idautils.Segments():
     print(idc.get_segm_name(seg), idc.gẻ_segm_start(seg), idc.get_segm_end(seg))
 ```
-
+---
 ### 3. Thao tác với hàm
 
 Lặp qua tất cả các hàm
@@ -224,7 +224,7 @@ FUNC_THUNK: Cho biết hàm này có phải là hàm thunk hay không. Hàm thun
 
 Lưu ý rằng một hàm có thể có nhiều tổ hợp cờ.
 ```
-
+---
 ### 4. Thao tác với câu lệnh
 
 Nếu có địa chỉ của một hàm có thể duyệt tất cả câu lệnh trong hàm bằng cách sử dụng idautils.FuncItems(ea) như sau
@@ -262,7 +262,7 @@ for func in idc.Functions():
 
 idc.get_operand_type(ea, n) lấy loại toán hạng thứ n, các loại toán hạng sẽ được đề cập ở phần dưới.
 ##### Note: Nếu muốn lấy địa chỉ tiếp theo mà không phải câu lệnh tiếp theo từ ea thì dùng lệnh **idc.next_addr** và **idc.prev_addr**
-
+---
 ### 5. Thao tác với toán hạng
 
 Để lấy loại toán hạng ta sử dụng hàm idc.get_operand_type(ea,n) trong đó ea là địa chỉ đầu lệnh và n là chỉ mục của toán hạng. Có các loại toán hạng như sau:
@@ -305,7 +305,7 @@ o_far: Kiểu trả về này là nghịch đảo của x86 và x86_64 Không ph
 ----------------------------------------------------
 o_near: Kiểu trả về này không phổ biến trong kỹ thuật đảo ngược x86 và x86_64. Nó được sử dụng để xác định toán hạng truy cập trực tiếp vào địa chỉ cục bộ, giá trị là 7
 ```
-
+---
 ### 6. Giả lập IDA
 
 Để lấy câu lệnh dạng đối tượng (inst_t) tại một địa chỉ ta có thể sử dụng lệnh sau
@@ -542,7 +542,7 @@ for i in range(0, challenge_funcs_tbl_size):
     else:
         print("Failed to scope challenge function #%d" % i)
 ```
-
+---
 ### 7. Thao tác với tham chiếu
 
 Xrefs trong IDApython được sử dụng để xử lý các phép tham chiếu và cross-reference (Xrefs) trong mã nguồn của chương trình phân tích. Dưới đây là một số hàm Xrefs thường được sử dụng và cách sử dụng:
