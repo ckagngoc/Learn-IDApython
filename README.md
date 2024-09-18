@@ -1,6 +1,29 @@
 # Lern-IDApython
 Học IDAPython với ckagngoc 💀
 
+## Mục lục
+[I. Tài liệu đề xuất](#i-tài-liệu-học-tập-được-đề-xuất-cho-ida-python)
+-
+
+[II. Giới thiệu các mục cơ bản](#ii-giới-thiệu)
+-
+
+[1-các-thao-tác-cơ-bản](#1-các-thao-tác-cơ-bản)
+
+[2-thao-tác-với-segment](#2-thao-tác-với-segment)
+
+[3-thao-tác-với-hàm](#3-thao-tác-với-hàm)
+
+[4-thao-tác-với-câu-lệnh](#4-thao-tác-với-câu-lệnh)
+
+[5-thao-tác-với-toán-hạng](#5-thao-tác-với-toán-hạng)
+
+[6-giả-lập-ida](#6-giả-lập-ida)
+
+[7-thao-tác-với-tham-chiếu](#7-thao-tác-với-tham-chiếu)
+
+---
+
 ## I. Tài liệu học tập được đề xuất cho IDA python
 - ida权威指南第二版》
 - [https://wooyun.js.org/drops/IDAPython%20%E8%AE%A9%E4%BD%A0%E7%9A%84%E7%94%9F%E6%B4%BB%E6%9B%B4%E6%BB%8B%E6%B6%A6%20part1%20and%20part2.html](https://wooyun.js.org/drops/IDAPython 让你的生活更滋润 part1 and part2.html)
@@ -518,4 +541,155 @@ for i in range(0, challenge_funcs_tbl_size):
         
     else:
         print("Failed to scope challenge function #%d" % i)
+```
+
+### 7. Thao tác với tham chiếu
+
+Xrefs trong IDApython được sử dụng để xử lý các phép tham chiếu và cross-reference (Xrefs) trong mã nguồn của chương trình phân tích. Dưới đây là một số hàm Xrefs thường được sử dụng và cách sử dụng:
+
+Duyệt tham chiếu tới một địa chỉ
+
+```
+for xref in idautils.XrefsTo(ea):
+    print(f"From: {hex(xref.frm)}, To: {hex(xref.to)}")
+
+for xref in XrefsFrom(ea):
+    print(f"From: {hex(xref.frm)}, To: {hex(xref.to)}")
+```
+
+Lấy địa chỉ đầu tiên tham chiếu đến ea
+
+```
+cref = idc.get_first_cref_to(ea)
+if cref != idaapi.BADADDR:
+    print(f"First code reference to {hex(ea)} is from {hex(cref)}")
+```
+
+Lấy địa chỉ tiếp theo tham chiếu đến ea
+
+```
+next_cref = idc.get_next_cref_to(ea, current_cref)
+if next_cref != idaapi.BADADDR:
+    print(f"Next code reference to {hex(ea)} is from {hex(next_cref)}")
+```
+
+Lấy địa chỉ đầu tiên mà địa chỉ ea tham chiếu tới
+
+```
+cref = idc.get_first_cref_from(ea)
+if cref != idaapi.BADADDR:
+    print(f"First code reference from {hex(ea)} is to {hex(cref)}")
+
+# Địa chỉ tiếp theo mà ea tham chiếu tới sử dụng lệnh sau
+
+next_cref = get_next_cref_from(ea, current_cref)
+if next_cref != BADADDR:
+    print(f"Next code reference from {hex(ea)} is to {hex(next_cref)}")
+```
+---
+#### Các Thuộc Tính của Đối Tượng Xrefs
+
+***from***
+```
+Mô tả: Địa chỉ (Effective Address - EA) từ đó tham chiếu được thực hiện.
+Loại: int
+Ví dụ: xref.from sẽ trả về địa chỉ nguồn của tham chiếu.
+```
+***to***
+```
+Mô tả: Địa chỉ (EA) mà tham chiếu trỏ tới.
+Loại: int
+Ví dụ: xref.to sẽ trả về địa chỉ đích của tham chiếu.
+```
+***type***
+```
+Mô tả: Loại tham chiếu. Các loại tham chiếu có thể bao gồm mã, dữ liệu, nhảy, gọi hàm, và các loại tham chiếu khác.
+Loại: int
+Ví dụ: xref.type sẽ trả về kiểu tham chiếu. Bạn có thể so sánh với các hằng số như XREF_DATA, XREF_CODE, XREF_CALL, v.v.
+```
+***flags***
+```
+Mô tả: Cờ (flag) cho biết loại tham chiếu, có thể bao gồm các flag như XREF_DATA, XREF_CODE, XREF_JUMP, v.v.
+Loại: int
+Ví dụ: xref.flags sẽ trả về cờ của tham chiếu.
+```
+
+----
+#### Các loại cờ của đối tượng xrefs
+Khi làm việc với các hàm Xrefs, bạn có thể sử dụng các flag để chỉ định loại tham chiếu bạn quan tâm.
+
+***1. XREF_DATA***
+```
+Mô tả: Tham chiếu dữ liệu (data reference).
+Flag: 0x0001
+```
+***2. XREF_CODE***
+```
+Mô tả: Tham chiếu mã (code reference).
+Flag: 0x0002
+```
+***3. XREF_USER***
+```
+Mô tả: Tham chiếu do người dùng tạo (user-defined reference).
+Flag: 0x0004
+```
+***4. XREF_JUMP***
+```
+Mô tả: Tham chiếu nhảy (jump reference).
+Flag: 0x0008
+```
+***5. XREF_CALL***
+```
+Mô tả: Tham chiếu gọi hàm (call reference).
+Flag: 0x0010
+```
+***6. XREF_DUMMY***
+```
+Mô tả: Tham chiếu giả (dummy reference) – thường không quan trọng trong phân tích thông thường.
+Flag: 0x0020
+```
+***7. XREF_TYPE_MASK***
+```
+Mô tả: Mask để lọc các loại tham chiếu.
+Flag: 0x003F
+```
+
+### 8. Debug hook với IDApython
+Tạo một file Python mới để chứa script. Dưới đây là ví dụ về một script đơn giản để thiết lập và sử dụng debug hook.
+
+```
+import idaapi
+
+class MyDebugHook(idaapi.DBG_Hooks):
+    def __init__(self):
+        super(MyDebugHook, self).__init__()
+    
+    def dbg_bpt(self, tid, ea):
+        print(f"Breakpoint hit at address: {hex(ea)}")
+        return idaapi.DBG_CONTINUE
+    
+    def dbg_step_into(self, tid):
+        print(f"Stepped into thread: {tid}")
+        return idaapi.DBG_CONTINUE
+
+    def dbg_step_over(self, tid):
+        print(f"Stepped over thread: {tid}")
+        return idaapi.DBG_CONTINUE
+
+    def dbg_step_out(self, tid):
+        print(f"Stepped out of thread: {tid}")
+        return idaapi.DBG_CONTINUE
+
+    def dbg_ret(self, tid):
+        print(f"Function return in thread: {tid}")
+        return idaapi.DBG_CONTINUE
+
+    def dbg_exception(self, tid, exception):
+        print(f"Exception in thread {tid}: {exception}")
+        return idaapi.DBG_CONTINUE
+
+# Initialize and hook
+debug_hook = MyDebugHook()
+debug_hook.hook()
+print("Debug hook installed")
 ```
