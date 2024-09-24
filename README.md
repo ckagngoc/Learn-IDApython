@@ -1,4 +1,4 @@
-# Lern-IDApython
+# Learn-IDApython
 Học IDAPython với ckagngoc 💀
 
 ## Mục lục
